@@ -24,32 +24,46 @@ io.on('connection', (socket) => {
             return callback('name and room name are required');
         }
 
+        // userul se alatura unui chatroom
         socket.join(params.room);
         // socket.leave('room_name');
+        // deconectam userul daca este deja conectat intr-un chatroom
         users.removeUser(socket.id);
+        // adaugam userul in noul chatroom
         users.addUser(socket.id, params.name, params.room);
-
+        // emitem un event pentru pentru a adauga userul in lista membrilor chatroom-ului
         io.to(params.room).emit('updateUserList', users.getUserList(params.room));
         socket.emit('newMessage', generateMessage('Admin', 'Welcome to the chat app'));
         socket.broadcast.to(params.room).emit('newMessage', generateMessage('Admin', `${params.name} has joined the room`));
 
         callback();
     });
-
+    // event listener pentru a crea un mesaj nou in chat
     socket.on('createMessage', (message, callback) => {
-        console.log('createMessage', message);
-        io.emit('newMessage', generateMessage(message.from, message.text));
+        var user = users.getUser(socket.id);
+        // vrem sa verificam daca userul exista si textul transmis este un string real (ex: fara whitespace)
+        if (user && isRealString(message.text)) {
+            // emite mesaj doar pe chatroom-ul pe care userul este conectat
+            io.to(user.room).emit('newMessage', generateMessage(user.name, message.text));
+        }
+
         callback();
     });
-
+    // event listener pentru a crea un mesaj cu coordonatele geografice
     socket.on('createLocationMessage', (coords) => {
-        io.emit('newLocationMessage', generateLocationMessage('Admin', coords.latitude, coords.longitude));
+        var user = users.getUser(socket.id);
+        // verificam daca userul exista si apoi emitem mesajul cu locatia doar catre userii din acel room
+        if (user) {
+            io.to(user.room).emit('newLocationMessage', generateLocationMessage(user.name, coords.latitude, coords.longitude));
+        }
     });
 
     socket.on('disconnect', () => {
         var user = users.removeUser(socket.id);
 
         if (user) {
+            // daca un user iese dintr-un chatroom vom emite 2 event-uri
+            // updatam lista de useri dintr-un room si anuntam faptul ca el a iesit
             io.to(user.room).emit('updateUserList', users.getUserList(user.room));
             io.to(user.room).emit('newMessage', generateMessage('Admin', `${user.name} has left the room`));
         }

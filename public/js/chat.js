@@ -33,13 +33,14 @@ socket.on('disconnect', function () {
     console.log('disconnected from server');
 });
 
+// updatam lista 'People' cu membrii unui chatroom:
 socket.on('updateUserList', function (users) {
     var ol = $('<ol></ol>');
 
     users.forEach(function (user) {
         ol.append($('<li></li>').text(user));
     });
-
+    // adaugam lista pe DOM:
     $('#users').html(ol);
 });
 
@@ -75,7 +76,6 @@ $('#message-form').on('submit', function (e) {
 
     var messageTextbox = $('[name=message]');
     socket.emit('createMessage', {
-        from: 'User',
         text: messageTextbox.val()
     }, function () {
         messageTextbox.val('')
